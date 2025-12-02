@@ -5,7 +5,7 @@ import json
 import time
 ##请求为： http://120.26.74.235/api/story/{1}（storyId=123）
 # Ollama 本地 API 配置
-OLLAMA_API_URL = "http://localhost:11434/api/generate"  # Ollama 默认地址
+OLLAMA_API_URL = "http://localhost:18001/api/generate"  # Ollama 默认地址
 #OLLAMA_API_URL = "http://localhost:18001/api/generate"  # Ollama 默认地址
 
 
