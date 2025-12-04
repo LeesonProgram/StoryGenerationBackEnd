@@ -213,28 +213,24 @@ def generate_image(request):
 
     try:
         # ----------------------------
-        # 1. 解析前端表单请求
+        # 1. 解析前端 JSON 请求
         # ----------------------------
-        user_prompt = request.POST.get("prompt", "").strip()
-        user_style = request.POST.get("style", "").strip()
+        data = json.loads(request.body)
+        user_prompt = data.get("prompt", "").strip()
+        user_style = data.get("style", "").strip()
 
         print(">>> 前端 prompt:", user_prompt)
         print(">>> 前端 style:", user_style)
 
-        # ----------------------------
-        # 2. 构建完整的提示词
-        # ----------------------------
-        full_prompt = f"风格:{user_style}\n\n场景描述:{user_prompt}"
-
         # 使用表单格式发送请求
-        data = {
-            "prompt": full_prompt,
+        files = {
+            "prompt": user_prompt,
             "style": user_style
         }
 
         print(">>> 调用 Text to Image 模型 ...")
 
-        response = requests.post(TEXT_TO_IMAGE_API_URL, data=data, timeout=60)
+        response = requests.post(TEXT_TO_IMAGE_API_URL, files=files, timeout=60)
         print(">>> Text to Image 模型状态码:", response.status_code)
         print(">>> Text to Image 模型响应内容:", response.text)
 
