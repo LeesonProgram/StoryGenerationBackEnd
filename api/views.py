@@ -49,7 +49,7 @@ def receive_content(request):
         full_prompt = f"{system_prompt}\n\n故事内容如下：\n{user_prompt}"
 
         payload = {
-            "model": "qwen2.5:3b",
+            "model": "qwen2.5-coder:3b",
             "prompt": full_prompt,
             "stream": False,
             "options": {
