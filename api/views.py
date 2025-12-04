@@ -3,10 +3,10 @@ from django.http import JsonResponse
 import requests
 import json
 import time
-##请求为： http://120.26.74.235/api/story/{1}（storyId=123）
+
 # Ollama 本地 API 配置
 OLLAMA_API_URL = "http://localhost:18001/api/generate"  # Ollama 默认地址
-#OLLAMA_API_URL = "http://localhost:18001/api/generate"  # Ollama 默认地址
+TEXT_TO_IMAGE_API_URL = "http://localhost:18002/api/generate_image"  # Text to Image 模型地址
 
 
 @csrf_exempt
@@ -107,6 +107,74 @@ def receive_content(request):
             "msg": "操作成功",
             "data": {
                 "shotList": shot_list
+            },
+            "time": int(time.time() * 1000)
+        })
+
+    except Exception as e:
+        print(">>> ❌ 错误:", str(e))
+        return JsonResponse({
+            "code": 500,
+            "msg": "服务器异常",
+            "data": str(e),
+            "time": int(time.time() * 1000)
+        })
+
+
+@csrf_exempt
+def generate_image(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "只支持POST请求"}, status=405)
+
+    try:
+        # ----------------------------
+        # 1. 解析前端 JSON 请求
+        # ----------------------------
+        data = json.loads(request.body)
+        user_prompt = data.get("prompt", "").strip()
+        user_style = data.get("style", "").strip()
+
+        print(">>> 前端 prompt:", user_prompt)
+        print(">>> 前端 style:", user_style)
+
+        # ----------------------------
+        # 2. 构建完整的提示词
+        # ----------------------------
+        full_prompt = f"风格:{user_style}\n\n场景描述:{user_prompt}"
+
+        payload = {
+            "prompt": full_prompt,
+            "stream": False
+        }
+
+        print(">>> 调用 Text to Image 模型 ...")
+
+        response = requests.post(TEXT_TO_IMAGE_API_URL, json=payload, timeout=60)
+        print(">>> Text to Image 模型状态码:", response.status_code)
+
+        if response.status_code != 200:
+            return JsonResponse({
+                "code": 500,
+                "msg": "图像生成模型调用失败",
+                "data": response.text,
+                "time": int(time.time() * 1000)
+            })
+
+        res = response.json()
+        image_base64 = res.get("image_base64", "")
+        saved_path = res.get("saved_path", "")
+
+        print(">>> 图像生成成功")
+
+        # ----------------------------
+        # 3. 构造最终返回格式
+        # ----------------------------
+        return JsonResponse({
+            "code": 200,
+            "msg": "操作成功",
+            "data": {
+                "image_base64": image_base64,
+                "saved_path": saved_path
             },
             "time": int(time.time() * 1000)
         })
