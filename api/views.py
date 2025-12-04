@@ -224,8 +224,8 @@ def generate_image(request):
 
         # 使用表单格式发送请求
         files = {
-            "prompt": user_prompt,
-            "style": user_style
+            "prompt": (None, user_prompt),
+            "style": (None, user_style)
         }
 
         print(">>> 调用 Text to Image 模型 ...")
