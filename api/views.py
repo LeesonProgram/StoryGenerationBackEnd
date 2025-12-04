@@ -128,11 +128,10 @@ def generate_image(request):
 
     try:
         # ----------------------------
-        # 1. 解析前端 JSON 请求
+        # 1. 解析前端表单请求
         # ----------------------------
-        data = json.loads(request.body)
-        user_prompt = data.get("prompt", "").strip()
-        user_style = data.get("style", "").strip()
+        user_prompt = request.POST.get("prompt", "").strip()
+        user_style = request.POST.get("style", "").strip()
 
         print(">>> 前端 prompt:", user_prompt)
         print(">>> 前端 style:", user_style)
@@ -142,15 +141,17 @@ def generate_image(request):
         # ----------------------------
         full_prompt = f"风格:{user_style}\n\n场景描述:{user_prompt}"
 
-        payload = {
+        # 使用表单格式发送请求
+        data = {
             "prompt": full_prompt,
-            "stream": False
+            "style": user_style
         }
 
         print(">>> 调用 Text to Image 模型 ...")
 
-        response = requests.post(TEXT_TO_IMAGE_API_URL, json=payload, timeout=60)
+        response = requests.post(TEXT_TO_IMAGE_API_URL, data=data, timeout=60)
         print(">>> Text to Image 模型状态码:", response.status_code)
+        print(">>> Text to Image 模型响应内容:", response.text)
 
         if response.status_code != 200:
             return JsonResponse({
@@ -160,7 +161,28 @@ def generate_image(request):
                 "time": int(time.time() * 1000)
             })
 
-        res = response.json()
+        # 检查响应内容是否为空
+        if not response.text:
+            return JsonResponse({
+                "code": 500,
+                "msg": "图像生成模型返回空响应",
+                "data": "",
+                "time": int(time.time() * 1000)
+            })
+
+        # 尝试解析JSON
+        try:
+            res = response.json()
+        except json.JSONDecodeError as e:
+            return JsonResponse({
+                "code": 500,
+                "msg": "图像生成模型返回非JSON格式数据",
+                "data": {
+                    "error": str(e),
+                    "response_content": response.text
+                },
+                "time": int(time.time() * 1000)
+            })
         image_base64 = res.get("image_base64", "")
         saved_path = res.get("saved_path", "")
 
