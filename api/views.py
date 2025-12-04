@@ -7,6 +7,7 @@ import time
 # Ollama 本地 API 配置
 OLLAMA_API_URL = "http://localhost:18001/api/generate"  # Ollama 默认地址
 TEXT_TO_IMAGE_API_URL = "http://localhost:18002/api/generate_image"  # Text to Image 模型地址
+TEXT_TO_SPEECH_API_URL = "http://localhost:18003/api/generate_speech"  # Text to Speech 模型地址
 
 
 @csrf_exempt
@@ -107,6 +108,90 @@ def receive_content(request):
             "msg": "操作成功",
             "data": {
                 "shotList": shot_list
+            },
+            "time": int(time.time() * 1000)
+        })
+
+    except Exception as e:
+        print(">>> ❌ 错误:", str(e))
+        return JsonResponse({
+            "code": 500,
+            "msg": "服务器异常",
+            "data": str(e),
+            "time": int(time.time() * 1000)
+        })
+
+
+@csrf_exempt
+def generate_speech(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "只支持POST请求"}, status=405)
+
+    try:
+        # ----------------------------
+        # 1. 解析前端 JSON 请求
+        # ----------------------------
+        data = json.loads(request.body)
+        narration = data.get("narration", "").strip()
+
+        print(">>> 前端 narration:", narration)
+
+        # ----------------------------
+        # 2. 构建表单数据
+        # ----------------------------
+        form_data = {
+            "text": narration,
+            "speed": "1.0"
+        }
+
+        print(">>> 调用 Text to Speech 模型 ...")
+
+        response = requests.post(TEXT_TO_SPEECH_API_URL, data=form_data, timeout=60)
+        print(">>> Text to Speech 模型状态码:", response.status_code)
+        print(">>> Text to Speech 模型响应内容:", response.text)
+
+        if response.status_code != 200:
+            return JsonResponse({
+                "code": 500,
+                "msg": "语音生成模型调用失败",
+                "data": response.text,
+                "time": int(time.time() * 1000)
+            })
+
+        # 检查响应内容是否为空
+        if not response.text:
+            return JsonResponse({
+                "code": 500,
+                "msg": "语音生成模型返回空响应",
+                "data": "",
+                "time": int(time.time() * 1000)
+            })
+
+        # 尝试解析JSON
+        try:
+            res = response.json()
+        except json.JSONDecodeError as e:
+            return JsonResponse({
+                "code": 500,
+                "msg": "语音生成模型返回非JSON格式数据",
+                "data": {
+                    "error": str(e),
+                    "response_content": response.text
+                },
+                "time": int(time.time() * 1000)
+            })
+
+        # ----------------------------
+        # 3. 构造最终返回格式
+        # ----------------------------
+        return JsonResponse({
+            "code": 200,
+            "msg": "操作成功",
+            "data": {
+                "audio_base64": res.get("audio_base64", ""),
+                "saved_path": res.get("saved_path", ""),
+                "speaker": res.get("speaker", "中文女"),
+                "sample_rate": res.get("sample_rate", 22050)
             },
             "time": int(time.time() * 1000)
         })
